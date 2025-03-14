@@ -94,9 +94,29 @@ df = pandas.DataFrame(data={
 print(df.head())
 PARAMETER_FILENAME = 'count_lines_in_files_aou_dsub.tsv'
 
-
 %env PARAMETER_FILENAME={PARAMETER_FILENAME}
 df.to_csv(PARAMETER_FILENAME, sep='\t', index=False)
+
+def modify_jaf(PARAMETER_FILENAME,folders,suffix='.vcf'):
+    import os
+    import glob
+    jaf=pandas.read_csv(PARAMETER_FILENAME,sep='\t')
+    already_done=[]
+    for folder in folders:
+        files=os.popen('gsutil -u $GOOGLE_PROJECT ls '+os.path.join(folder,'*'+suffix)).readlines()
+        already_done=already_done+files
+    ids=[]
+    for file in already_done:
+        ids.append(os.path.basename(file.rstrip().replace(suffix,'')))
+    jaf['--env PREFIX']=jaf['--env PREFIX'].astype(str)
+    jaf=jaf[~jaf['--env PREFIX'].isin(ids)]
+    return jaf
+
+jaf=modify_jaf(PARAMETER_FILENAME,['$WORKSPACE_BUCKET/dsub/results/ExpansionHunter-aou_dsub/chrisclarkson/20250314/090850/'],suffix='.vcf')
+print(df.shape)
+print(jaf.shape)
+jaf.to_csv(PARAMETER_FILENAME,sep='\t',index=False)
+
 
 """
 %%writefile ~/aou_dsub.bash
@@ -172,6 +192,9 @@ dstat \
     --jobs "${JOB_ID}" \
     --users "${USER_NAME}" \
     --status '*'
+
+
+
 
 
 
